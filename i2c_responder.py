@@ -152,6 +152,21 @@ class I2CResponder:
         status = mem32[self.i2c_base | self.IC_CLR_RD_REQ]
         mem32[self.i2c_base | self.IC_DATA_CMD] = data & 0xFF
 
+    def put_read_bytes(self, data):
+        """Issue requested I2C READ data to the requesting Controller.
+
+        This function should be called to return the requested I2C READ
+        data when read_is_pending() returns True.
+
+        Args:
+            data (int): A byte value to send.
+        """
+        # reset flag
+        self.clr_reg(self.IC_CLR_TX_ABRT, self.IC_CLR_TX_ABRT__CLR_TX_ABRT)
+        for byte in data:
+            mem32[self.i2c_base | self.IC_DATA_CMD] = byte & 0xFF
+        status = mem32[self.i2c_base | self.IC_CLR_RD_REQ]
+
     def write_data_is_available(self):
         """Check whether incoming (I2C WRITE) data is available.
 
@@ -181,3 +196,20 @@ class I2CResponder:
         while len(data) < max_size and self.write_data_is_available():
             data.append(mem32[self.i2c_base | self.IC_DATA_CMD] & 0xFF)
         return data
+
+
+    def get_write_bytes(self, max_size=1):
+        """Get incoming (I2C WRITE) data.
+
+        Will return bytes from the Rx FIFO, if present, up to the requested size.
+
+        Args:
+            max_size (int): The maximum number of bytes to fetch.
+        Returns:
+            A list containing 0 to max_size bytes.
+        """
+        data = bytearray()
+        while len(data) < max_size and self.write_data_is_available():
+            data.append(mem32[self.i2c_base | self.IC_DATA_CMD] & 0xFF)
+        return data
+
